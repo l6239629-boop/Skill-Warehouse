@@ -1,0 +1,490 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>SharedSkills Manager</title>
+  <style>
+    :root {
+      --bg: #f7f8fb;
+      --panel: #ffffff;
+      --text: #1d2433;
+      --muted: #667085;
+      --line: #d8dee9;
+      --accent: #126b5d;
+      --accent-soft: #e3f4ef;
+      --danger: #b42318;
+      --warn: #9a6700;
+      --shadow: 0 10px 30px rgba(18, 24, 40, .08);
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font: 14px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+    header {
+      padding: 22px 28px 18px;
+      background: var(--panel);
+      border-bottom: 1px solid var(--line);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+    }
+    h1 { margin: 0; font-size: 22px; font-weight: 700; }
+    .sub { color: var(--muted); margin-top: 4px; overflow-wrap: anywhere; }
+    main { padding: 22px 28px 32px; }
+    .toolbar {
+      display: grid;
+      grid-template-columns: minmax(180px, 1fr) auto auto;
+      gap: 10px;
+      margin-bottom: 18px;
+    }
+    input, select, button {
+      height: 36px;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      background: #fff;
+      color: var(--text);
+      padding: 0 10px;
+      font: inherit;
+    }
+    button {
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      font-weight: 600;
+    }
+    button.primary { background: var(--accent); color: #fff; border-color: var(--accent); }
+    button.danger { color: var(--danger); }
+    button:disabled { opacity: .45; cursor: not-allowed; }
+    .layout {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 360px;
+      gap: 18px;
+      align-items: start;
+    }
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+    table { width: 100%; border-collapse: collapse; }
+    th, td {
+      padding: 12px 14px;
+      border-bottom: 1px solid var(--line);
+      text-align: left;
+      vertical-align: top;
+    }
+    th { font-size: 12px; color: var(--muted); background: #fbfcfe; font-weight: 700; }
+    tr:last-child td { border-bottom: 0; }
+    th:nth-child(2), th:nth-child(3), th:nth-child(4) { width: 130px; }
+    .name { font-weight: 700; }
+    .desc { color: var(--muted); margin-top: 3px; max-width: 680px; }
+    .path { color: var(--muted); font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; overflow-wrap: anywhere; margin-top: 6px; }
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      height: 24px;
+      padding: 0 8px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 700;
+      background: var(--accent-soft);
+      color: var(--accent);
+    }
+    .badge.disabled { background: #fff4d6; color: var(--warn); }
+    .badge.protected { background: #eef2f6; color: #475467; }
+    .actions { display: flex; flex-wrap: wrap; gap: 8px; }
+    .stats { white-space: nowrap; }
+    .folder-row td {
+      background: #f3f6f8;
+      color: var(--text);
+      font-weight: 700;
+      border-bottom: 1px solid var(--line);
+    }
+    .folder-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      min-height: 28px;
+    }
+    .folder-count {
+      color: var(--muted);
+      font-weight: 600;
+      font-size: 12px;
+    }
+    .events { padding: 14px; max-height: 620px; overflow: auto; }
+    .side-title {
+      padding: 14px 14px 0;
+      margin: 0;
+      font-size: 13px;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: .04em;
+    }
+    .versions { padding: 14px; max-height: 360px; overflow: auto; border-top: 1px solid var(--line); }
+    .event {
+      border-bottom: 1px solid var(--line);
+      padding: 10px 0;
+    }
+    .event:last-child { border-bottom: 0; }
+    .event strong { display: block; }
+    .event span { color: var(--muted); font-size: 12px; overflow-wrap: anywhere; }
+    .event ul { margin: 8px 0 0 18px; padding: 0; color: var(--muted); }
+    .empty { padding: 32px; color: var(--muted); text-align: center; }
+    @media (max-width: 980px) {
+      header, main { padding-left: 16px; padding-right: 16px; }
+      .toolbar { grid-template-columns: 1fr; }
+      .layout { grid-template-columns: 1fr; }
+      table, thead, tbody, tr, th, td { display: block; }
+      thead { display: none; }
+      tr { border-bottom: 1px solid var(--line); }
+      td { border-bottom: 0; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div>
+      <h1>SharedSkills Manager</h1>
+      <div class="sub" id="sharedDir">Loading...</div>
+    </div>
+    <div class="actions">
+      <button id="languageBtn">中文</button>
+      <button class="primary" id="refreshBtn">Refresh</button>
+    </div>
+  </header>
+
+  <main>
+    <div class="toolbar">
+      <input id="search" placeholder="Search skills by name, description, or path">
+      <select id="status">
+        <option value="all">All statuses</option>
+        <option value="active">Active only</option>
+        <option value="disabled">Disabled only</option>
+      </select>
+      <select id="sort">
+        <option value="name">Sort by name</option>
+        <option value="modified">Sort by modified time</option>
+        <option value="status">Sort by status</option>
+      </select>
+    </div>
+
+    <section class="layout">
+      <div class="panel">
+        <table>
+          <thead>
+            <tr>
+              <th>Skill</th>
+              <th>Status</th>
+              <th>Stats</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="skillRows"></tbody>
+        </table>
+        <div class="empty" id="empty" hidden>No skills match the current filters.</div>
+      </div>
+
+      <aside class="panel">
+        <h2 class="side-title" id="eventsTitle">Events</h2>
+        <div class="events" id="events"></div>
+        <h2 class="side-title" id="versionsTitle">Knowledge Base</h2>
+        <div class="versions" id="versions"></div>
+      </aside>
+    </section>
+  </main>
+
+  <script>
+    const i18n = {
+      en: {
+        title: "SharedSkills Manager",
+        refresh: "Refresh",
+        search: "Search skills by name, description, or path",
+        all: "All statuses",
+        activeOnly: "Active only",
+        disabledOnly: "Disabled only",
+        sortName: "Sort by name",
+        sortModified: "Sort by modified time",
+        sortStatus: "Sort by status",
+        folder: "Folder",
+        rootFolder: "SharedSkills",
+        skill: "Skill",
+        status: "Status",
+        stats: "Stats",
+        actions: "Actions",
+        active: "active",
+        disabled: "disabled",
+        protected: "Protected",
+        reveal: "Reveal",
+        disable: "Disable",
+        enable: "Enable",
+        del: "Delete",
+        versions: "Versions",
+        events: "Events",
+        knowledge: "Knowledge Base",
+        files: "files",
+        noDescription: "No description",
+        noSkills: "No skills match the current filters.",
+        noEvents: "No recorded changes yet.",
+        selectSkill: "Select a skill to view its version knowledge base.",
+        noVersions: "No versions recorded yet.",
+        language: "中文",
+        confirmDelete: name => `Move "${name}" to the manager trash?`,
+        operationFailed: "Operation failed",
+      },
+      zh: {
+        title: "SharedSkills 管理台",
+        refresh: "刷新",
+        search: "按名称、描述或路径搜索 Skill",
+        all: "全部状态",
+        activeOnly: "仅启用",
+        disabledOnly: "仅禁用",
+        sortName: "按名称排序",
+        sortModified: "按修改时间排序",
+        sortStatus: "按状态排序",
+        folder: "文件夹",
+        rootFolder: "SharedSkills 根目录",
+        skill: "Skill",
+        status: "状态",
+        stats: "统计",
+        actions: "操作",
+        active: "启用",
+        disabled: "禁用",
+        protected: "受保护",
+        reveal: "定位",
+        disable: "禁用",
+        enable: "启用",
+        del: "删除",
+        versions: "版本",
+        events: "改动记录",
+        knowledge: "知识库",
+        files: "个文件",
+        noDescription: "暂无描述",
+        noSkills: "没有匹配当前筛选条件的 Skill。",
+        noEvents: "暂无改动记录。",
+        selectSkill: "选择一个 Skill 查看它的版本知识库。",
+        noVersions: "暂无版本记录。",
+        language: "EN",
+        confirmDelete: name => `将「${name}」移动到管理台回收区？`,
+        operationFailed: "操作失败",
+      }
+    };
+    const eventNames = {
+      zh: { added: "新增", removed: "移除", modified: "修改", disabled: "禁用", enabled: "启用", deleted: "删除", active: "启用" },
+      en: {}
+    };
+    const state = { skills: [], events: [], sharedDir: "", lang: localStorage.getItem("managerLang") || "zh", selectedSkill: "", versions: [] };
+    const rows = document.getElementById("skillRows");
+    const empty = document.getElementById("empty");
+    const events = document.getElementById("events");
+    const versions = document.getElementById("versions");
+    const search = document.getElementById("search");
+    const statusFilter = document.getElementById("status");
+    const sort = document.getElementById("sort");
+    const languageBtn = document.getElementById("languageBtn");
+
+    function t(key) {
+      return i18n[state.lang][key] || i18n.en[key] || key;
+    }
+
+    function eventLabel(type) {
+      return eventNames[state.lang][type] || type;
+    }
+
+    function changePoint(text) {
+      if (state.lang !== "zh") return text;
+      return text
+        .replace(/^Initial knowledge-base record for (.+)\.$/, "首次写入知识库：$1。")
+        .replace(/^Status changed: (.+) -> (.+)\.$/, "状态变化：$1 -> $2。")
+        .replace(/^Name changed: (.+) -> (.+)\.$/, "名称变化：$1 -> $2。")
+        .replace("Description changed.", "描述发生变化。")
+        .replace("Files added: ", "新增文件：")
+        .replace("Files removed: ", "移除文件：")
+        .replace("Files modified: ", "修改文件：")
+        .replace(/^Version recorded after (.+)\.$/, "已记录版本，原因：$1。");
+    }
+
+    function fmtBytes(bytes) {
+      if (bytes < 1024) return `${bytes} B`;
+      if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+      return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
+    }
+
+    function badge(skill) {
+      const status = skill.status === "disabled" ? "disabled" : "active";
+      const protection = skill.protected ? `<span class="badge protected">${t("protected")}</span>` : "";
+      return `<span class="badge ${status}">${t(status)}</span> ${protection}`;
+    }
+
+    function render() {
+      document.querySelector("h1").textContent = t("title");
+      document.getElementById("sharedDir").textContent = state.sharedDir;
+      document.getElementById("refreshBtn").textContent = t("refresh");
+      document.getElementById("languageBtn").textContent = t("language");
+      document.getElementById("search").placeholder = t("search");
+      document.getElementById("eventsTitle").textContent = t("events");
+      document.getElementById("versionsTitle").textContent = t("knowledge");
+      statusFilter.options[0].textContent = t("all");
+      statusFilter.options[1].textContent = t("activeOnly");
+      statusFilter.options[2].textContent = t("disabledOnly");
+      sort.options[0].textContent = t("sortName");
+      sort.options[1].textContent = t("sortModified");
+      sort.options[2].textContent = t("sortStatus");
+      document.querySelectorAll("th")[0].textContent = t("skill");
+      document.querySelectorAll("th")[1].textContent = t("status");
+      document.querySelectorAll("th")[2].textContent = t("stats");
+      document.querySelectorAll("th")[3].textContent = t("actions");
+      const q = search.value.trim().toLowerCase();
+      let skills = state.skills.filter(skill => {
+        const matchesStatus = statusFilter.value === "all" || skill.status === statusFilter.value;
+        const haystack = `${skill.name} ${skill.description} ${skill.id} ${skill.path}`.toLowerCase();
+        return matchesStatus && (!q || haystack.includes(q));
+      });
+      skills.sort((a, b) => {
+        if (sort.value === "modified") return b.modifiedAt.localeCompare(a.modifiedAt);
+        if (sort.value === "status") return a.status.localeCompare(b.status) || a.name.localeCompare(b.name);
+        return (a.category || "").localeCompare(b.category || "") || a.name.localeCompare(b.name);
+      });
+      const groups = groupSkills(skills);
+      rows.innerHTML = groups.map(group => `
+        <tr class="folder-row">
+          <td colspan="4">
+            <span class="folder-pill">${escapeHtml(displayCategory(group.name))}<span class="folder-count">${group.skills.length} ${t("skill")}</span></span>
+          </td>
+        </tr>
+        ${group.skills.map(skill => `
+        <tr>
+          <td>
+            <div class="name">${escapeHtml(skill.name)}</div>
+            <div class="desc">${escapeHtml(skill.description || t("noDescription"))}</div>
+            <div class="path">${escapeHtml(skill.id)}</div>
+          </td>
+          <td>${badge(skill)}</td>
+          <td class="stats">
+            <div>${skill.fileCount} ${t("files")}</div>
+            <div>${fmtBytes(skill.sizeBytes)}</div>
+            <div class="path">${escapeHtml(skill.modifiedAt)}</div>
+            <div>${skill.versionCount || 0} ${t("versions")}</div>
+          </td>
+          <td>
+            <div class="actions">
+              <button onclick="loadVersions('${encodeURIComponent(skill.id)}')">${t("versions")}</button>
+              <button onclick="act('reveal', '${encodeURIComponent(skill.id)}')">${t("reveal")}</button>
+              ${skill.status === "active"
+                ? `<button ${skill.protected ? "disabled" : ""} onclick="act('disable', '${encodeURIComponent(skill.id)}')">${t("disable")}</button>`
+                : `<button onclick="act('enable', '${encodeURIComponent(skill.id)}')">${t("enable")}</button>`}
+              <button class="danger" ${skill.protected ? "disabled" : ""} onclick="confirmDelete('${encodeURIComponent(skill.id)}', '${escapeAttr(skill.name)}')">${t("del")}</button>
+            </div>
+          </td>
+        </tr>
+        `).join("")}
+      `).join("");
+      empty.hidden = skills.length !== 0;
+      empty.textContent = t("noSkills");
+      events.innerHTML = state.events.slice().reverse().map(event => `
+        <div class="event">
+          <strong>${escapeHtml(eventLabel(event.type))} · ${escapeHtml(event.skillId)}</strong>
+          <span>${escapeHtml(event.time)} ${event.detail ? " · " + escapeHtml(event.detail) : ""}</span>
+        </div>
+      `).join("") || `<div class="empty">${t("noEvents")}</div>`;
+      renderVersions();
+    }
+
+    function groupSkills(skills) {
+      const map = new Map();
+      for (const skill of skills) {
+        const name = skill.category || "SharedSkills";
+        if (!map.has(name)) map.set(name, []);
+        map.get(name).push(skill);
+      }
+      return Array.from(map.entries())
+        .map(([name, items]) => ({ name, skills: items }))
+        .sort((a, b) => displayCategory(a.name).localeCompare(displayCategory(b.name)));
+    }
+
+    function displayCategory(name) {
+      return name === "SharedSkills" ? t("rootFolder") : `${t("folder")} · ${name}`;
+    }
+
+    function renderVersions() {
+      if (!state.selectedSkill) {
+        versions.innerHTML = `<div class="empty">${t("selectSkill")}</div>`;
+        return;
+      }
+      versions.innerHTML = state.versions.slice().reverse().map(version => `
+        <div class="event">
+          <strong>v${version.version} · ${escapeHtml(version.name || version.skillId)}</strong>
+          <span>${escapeHtml(version.time)} · ${escapeHtml(version.reason || "")} · ${escapeHtml((version.hash || "").slice(0, 12))}</span>
+          <ul>${(version.changePoints || []).map(point => `<li>${escapeHtml(changePoint(point))}</li>`).join("")}</ul>
+        </div>
+      `).join("") || `<div class="empty">${t("noVersions")}</div>`;
+    }
+
+    function escapeHtml(value) {
+      return String(value).replace(/[&<>"']/g, char => ({
+        "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
+      }[char]));
+    }
+
+    function escapeAttr(value) {
+      return escapeHtml(value).replace(/`/g, "&#96;");
+    }
+
+    async function load() {
+      const response = await fetch("/api/skills");
+      const data = await response.json();
+      state.skills = data.skills || [];
+      state.events = data.events || [];
+      state.sharedDir = data.sharedDir || "";
+      render();
+    }
+
+    async function act(action, encodedId) {
+      const response = await fetch(`/api/${action}/${encodedId}`, { method: "POST" });
+      const data = await response.json();
+      if (!response.ok) {
+        alert(data.error || t("operationFailed"));
+        return;
+      }
+      state.skills = data.skills || state.skills;
+      state.events = data.events || state.events;
+      render();
+    }
+
+    async function loadVersions(encodedId) {
+      const skillId = decodeURIComponent(encodedId);
+      const response = await fetch(`/api/versions/${encodedId}`);
+      const data = await response.json();
+      state.selectedSkill = skillId;
+      state.versions = data.versions || [];
+      render();
+    }
+
+    function confirmDelete(encodedId, name) {
+      if (confirm(t("confirmDelete")(name))) {
+        act("delete", encodedId);
+      }
+    }
+
+    document.getElementById("refreshBtn").addEventListener("click", load);
+    languageBtn.addEventListener("click", () => {
+      state.lang = state.lang === "zh" ? "en" : "zh";
+      localStorage.setItem("managerLang", state.lang);
+      render();
+    });
+    search.addEventListener("input", render);
+    statusFilter.addEventListener("change", render);
+    sort.addEventListener("change", render);
+    load();
+    setInterval(load, 10000);
+  </script>
+</body>
+</html>
